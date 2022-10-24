@@ -93,19 +93,15 @@ class Shape:
     def highlight(self, canvas: tk.Canvas, timeout: int = 200, r: int = 5) -> None:
         pass
 
+    def fix_points(self):
+        pass
+
     @staticmethod
     def load(path: str) -> 'Shape':
         with open(path, "r", encoding='utf8') as file:
             s = eval(file.read())
             if isinstance(s, Polyhedron):
-                points: dict[tuple[float, float, float], Point] = {}
-                for poly in s.polygons:
-                    for i, point in enumerate(poly.points):
-                        k = (point.x, point.y, point.z)
-                        if k not in points:
-                            points[k] = point
-                        else:
-                            poly.points[i] = points[k]
+                s.fix_points()
             return s
 
     def save(self, path: str):
@@ -259,6 +255,16 @@ class Polyhedron(Shape):
     def highlight(self, canvas: tk.Canvas, timeout: int = 200, r: int = 5):
         for polygon in self.polygons:
             polygon.highlight(canvas, timeout, r)
+
+    def fix_points(self):
+        points: dict[tuple[float, float, float], Point] = {}
+        for poly in self.polygons:
+            for i, point in enumerate(poly.points):
+                k = (point.x, point.y, point.z)
+                if k not in points:
+                    points[k] = point
+                else:
+                    poly.points[i] = points[k]
 
     @property
     def center(self) -> 'Point':
