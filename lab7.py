@@ -96,8 +96,17 @@ class Shape:
     @staticmethod
     def load(path: str) -> 'Shape':
         with open(path, "r", encoding='utf8') as file:
-            return eval(file.read())
-            # TODO: fix point overlappping
+            s = eval(file.read())
+            if isinstance(s, Polyhedron):
+                points: dict[tuple[float, float, float], Point] = {}
+                for poly in s.polygons:
+                    for i, point in enumerate(poly.points):
+                        k = (point.x, point.y, point.z)
+                        if k not in points:
+                            points[k] = point
+                        else:
+                            poly.points[i] = points[k]
+            return s
 
     def save(self, path: str):
         if not path.endswith(".shape"):
