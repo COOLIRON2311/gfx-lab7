@@ -322,6 +322,10 @@ class RotationBody(Shape):
     def transform(self, matrix: np.ndarray):
         self.polygon.transform(matrix)
 
+    @property
+    def center(self) -> 'Point':
+        return self.polygon.center
+
 
 @dataclass
 class FuncPlot(Shape):
@@ -383,6 +387,10 @@ class FuncPlot(Shape):
                     Point(x0, y1, z1)
                 ]))
         return Polyhedron(polygons)
+
+    @property
+    def center(self) -> Point:
+        return self._polyhedron.center
 
 
 class Models:
@@ -963,7 +971,7 @@ class App(tk.Tk):
                 mat = mat_fwd @ mat_rot @ mat_back
                 self.shape.transform(mat)
                 self.reset(del_shape=False)
-                l.draw(self.canvas, self.projection, col='orange')
+                l.draw(self.canvas, self.projection, color='orange')
                 self.shape.draw(self.canvas, self.projection)
 
     def key_pressed(self, event: tk.Event):
