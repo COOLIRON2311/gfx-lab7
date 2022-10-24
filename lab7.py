@@ -341,6 +341,9 @@ class Models:
             ]
             super().__init__(polygons)
 
+        def __repr__(self) -> str:
+            return super().__repr__().replace('Models.Tetrahedron', 'Polyhedron')
+
     class Hexahedron(Polyhedron):
         def __init__(self, size=100):
             p1 = Point(0, 0, 0)
@@ -360,6 +363,9 @@ class Models:
                 Polygon([p5, p6, p7, p8])
             ]
             super().__init__(polygons)
+
+        def __repr__(self) -> str:
+            return super().__repr__().replace('Models.Hexahedron', 'Polyhedron')
 
     class Octahedron(Polyhedron):
         def __init__(self, size=100):
@@ -381,6 +387,9 @@ class Models:
                 Polygon([p2, p5, p6])
             ]
             super().__init__(polygons)
+
+        def __repr__(self) -> str:
+            return super().__repr__().replace('Models.Octahedron', 'Polyhedron')
 
     class Icosahedron(Polyhedron):
         def __init__(self, size=100):
@@ -423,6 +432,9 @@ class Models:
 
             super().__init__(polygons)
 
+        def __repr__(self) -> str:
+            return super().__repr__().replace('Models.Icosahedron', 'Polyhedron')
+
     class Dodecahedron(Polyhedron):
         def __init__(self, size=100):
             t = Models.Icosahedron(size)
@@ -445,6 +457,9 @@ class Models:
                 Polygon([p[15], p[16], p[17], p[18], p[19]])
             ]
             super().__init__(polygons)
+
+        def __repr__(self) -> str:
+            return super().__repr__().replace('Models.Dodecahedron', 'Polyhedron')
 
 
 class App(tk.Tk):
