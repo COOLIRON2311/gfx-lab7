@@ -44,7 +44,7 @@ class Function(Enum):
             case Function.ReflectOverPlane:
                 return "Отражение относительно плоскости"
             case Function.ScaleAboutCenter:
-                return "Масштабирование относительно центра"
+                return "Масштабирование относ. центра"
             case Function.RotateAroundAxis:
                 return "Вращение относительно оси"
             case Function.RotateAroundLine:
@@ -61,6 +61,7 @@ class ShapeType(Enum):
     Icosahedron = 3
     Dodecahedron = 4
     RotationBody = 5
+    FuncPlot = 6
 
     def __str__(self) -> str:
         match self:
@@ -76,6 +77,8 @@ class ShapeType(Enum):
                 return "Додекаэдр"
             case ShapeType.RotationBody:
                 return "Тело вращения"
+            case ShapeType.FuncPlot:
+                return "График функции"
             case _:
                 pass
         return "Неизвестная фигура"
@@ -317,6 +320,33 @@ class RotationBody(Shape):
     def transform(self, matrix: np.ndarray):
         self.polygon.transform(matrix)
 
+@dataclass
+class FuncPlot(Shape):
+    func: str
+    x0: float
+    x1: float
+    y0: float
+    y1: float
+    nx: int
+    ny: int
+    # def __init__(self, func: 'Callable[[float], float]', x_range: tuple[float, float],
+    #              y_range: tuple[float, float], step: float = 0.01):
+    #     self.func = func
+    #     self.x_range = x_range
+    #     self.y_range = y_range
+    #     self.step = step
+
+    # def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
+    #     x = self.x_range[0]
+    #     while x < self.x_range[1]:
+    #         y = self.func(x)
+    #         if self.y_range[0] <= y <= self.y_range[1]:
+    #             Point(x, y).draw(canvas, projection)
+    #         x += self.step
+
+    # def transform(self, matrix: np.ndarray):
+    #     pass
+    pass
 
 class Models:
     """
@@ -512,7 +542,7 @@ class App(tk.Tk):
         self.grid = tk.Checkbutton(self.buttons, text="Сетка", var=self._grid, command=self.reset)
 
         self.shapesbox = tk.Listbox(
-            self.buttons, selectmode=tk.SINGLE, height=1, width=15)
+            self.buttons, selectmode=tk.SINGLE, height=1, width=16)
         self.scroll1 = tk.Scrollbar(
             self.buttons, orient=tk.VERTICAL, command=self._scroll1)
         self.funcsbox = tk.Listbox(
@@ -738,6 +768,13 @@ class App(tk.Tk):
                     poly.append(Point(float(points[i]), float(points[i + 1]), float(points[i + 2])))
                 self.shape = RotationBody(Polygon(poly), axis.strip().upper(), int(patritions))
                 # Coin: 0, 0, 0, 0, 100, 0, 0, 0, 100, Y, 120
+            case ShapeType.FuncPlot:
+                inp = sd.askstring("Параметры", "Введите функцию, диапазонамы отсечения [x0, x1] и [y0, y1], количество разбиений по x и y через запятую:")
+                if inp is None:
+                    return
+                func, x0, x1, y0, y1, nx, ny = map(str.strip, inp.split(','))
+                func = eval(f"lambda x, y: {func}")
+                self.shape = FuncPlot(func, float(x0), float(x1), float(y0), float(y1), int(nx), int(ny))
 
         self.shape.draw(self.canvas, self.projection)
 
