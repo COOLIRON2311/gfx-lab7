@@ -2,9 +2,10 @@ import tkinter as tk
 from dataclasses import dataclass, field
 from enum import Enum
 from math import cos, pi, radians, sin
-from tkinter import simpledialog as sd
-from tkinter import messagebox as mb
 from tkinter import filedialog as fd
+from tkinter import messagebox as mb
+from tkinter import simpledialog as sd
+from typing import Callable
 import numpy as np
 
 
@@ -103,7 +104,7 @@ class Shape:
     def load(path: str) -> 'Shape':
         with open(path, "r", encoding='utf8') as file:
             s = eval(file.read())
-            if isinstance(s, Polyhedron):
+            if isinstance(s, (Polyhedron, FuncPlot)):
                 s.fix_points()
             return s
 
@@ -320,33 +321,68 @@ class RotationBody(Shape):
     def transform(self, matrix: np.ndarray):
         self.polygon.transform(matrix)
 
+
 @dataclass
 class FuncPlot(Shape):
-    func: str
+    func: Callable[[float, float], float]
     x0: float
     x1: float
     y0: float
     y1: float
     nx: int
     ny: int
-    # def __init__(self, func: 'Callable[[float], float]', x_range: tuple[float, float],
-    #              y_range: tuple[float, float], step: float = 0.01):
-    #     self.func = func
-    #     self.x_range = x_range
-    #     self.y_range = y_range
-    #     self.step = step
+    _polyhedron: Polyhedron = field(init=False, default=None, repr=False)
 
-    # def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
-    #     x = self.x_range[0]
-    #     while x < self.x_range[1]:
-    #         y = self.func(x)
-    #         if self.y_range[0] <= y <= self.y_range[1]:
-    #             Point(x, y).draw(canvas, projection)
-    #         x += self.step
+    def __init__(self, func: str, x0: float, x1: float, y0: float, y1: float, nx: int, ny: int):
+        self.func = eval(f"lambda x, y: {func}")
+        self.x0 = x0
+        self.x1 = x1
+        self.y0 = y0
+        self.y1 = y1
+        self.nx = nx
+        self.ny = ny
+        self._polyhedron = self._build_polyhedron()
 
-    # def transform(self, matrix: np.ndarray):
-    #     pass
-    pass
+    def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
+        self._polyhedron.draw(canvas, projection)
+
+    def save(self, path: str):
+        self._polyhedron.save(path)
+
+    def transform(self, matrix: np.ndarray) -> None:
+        self._polyhedron.transform(matrix)
+
+    def fix_points(self):
+        points: dict[tuple[float, float, float], Point] = {}
+        for poly in self._polyhedron.polygons:
+            for i, point in enumerate(poly.points):
+                k = (point.x, point.y, point.z)
+                if k not in points:
+                    points[k] = point
+                else:
+                    poly.points[i] = points[k]
+
+    def _build_polyhedron(self) -> Polyhedron:
+        # TODO: this is a mess
+        polygons = []
+        # dx = (self.x1 - self.x0) / self.nx
+        # dy = (self.y1 - self.y0) / self.ny
+        # for i in range(self.nx):
+        #     for j in range(self.ny):
+        #         x0 = self.x0 + i * dx
+        #         y0 = self.y0 + j * dy
+        #         x1 = x0 + dx
+        #         y1 = y0 + dy
+        #         z0 = self.func(x0, y0)
+        #         z1 = self.func(x1, y1)
+        #         polygons.append(Polygon([
+        #             Point(x0, y0, z0),
+        #             Point(x1, y0, z0),
+        #             Point(x1, y1, z1),
+        #             Point(x0, y1, z1)
+        #         ]))
+        return Polyhedron(polygons)
+
 
 class Models:
     """
@@ -769,11 +805,11 @@ class App(tk.Tk):
                 self.shape = RotationBody(Polygon(poly), axis.strip().upper(), int(patritions))
                 # Coin: 0, 0, 0, 0, 100, 0, 0, 0, 100, Y, 120
             case ShapeType.FuncPlot:
-                inp = sd.askstring("Параметры", "Введите функцию, диапазонамы отсечения [x0, x1] и [y0, y1], количество разбиений по x и y через запятую:")
+                inp = sd.askstring(
+                    "Параметры", "Введите функцию, диапазонамы отсечения [x0, x1] и [y0, y1], количество разбиений по x и y через запятую:")
                 if inp is None:
                     return
                 func, x0, x1, y0, y1, nx, ny = map(str.strip, inp.split(','))
-                func = eval(f"lambda x, y: {func}")
                 self.shape = FuncPlot(func, float(x0), float(x1), float(y0), float(y1), int(nx), int(ny))
 
         self.shape.draw(self.canvas, self.projection)
@@ -930,7 +966,6 @@ class App(tk.Tk):
                 self.shape.draw(self.canvas, self.projection)
 
     def key_pressed(self, event: tk.Event):
-        print(event.keysym)
         if event.keysym == 'l':
             path = fd.askopenfilename(filetypes=[('Файлы с фигурами', '*.shape')])
             if path:
