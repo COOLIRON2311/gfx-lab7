@@ -100,6 +100,8 @@ class Shape:
             # TODO: fix point overlappping
 
     def save(self, path: str):
+        if not path.endswith(".shape"):
+            path += ".shape"
         with open(path, "w", encoding='utf8') as file:
             file.write(str(self))
 
