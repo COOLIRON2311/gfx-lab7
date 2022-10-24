@@ -88,7 +88,7 @@ class ShapeType(Enum):
 class Shape:
     """Base class for all shapes"""
 
-    def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs) -> None:
+    def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = True) -> None:
         pass
 
     def transform(self, matrix: np.ndarray) -> None:
@@ -133,7 +133,7 @@ class Point(Shape):
             return self.x == __o.x and self.y == __o.y and self.z == __o.z
         return False
 
-    def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
+    def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = True):
         if projection == Projection.Perspective:
             # print(App.dist)
             per = np.array([
@@ -164,8 +164,8 @@ class Point(Shape):
             x = self.x
             y = self.y
             z = self.z
-        canvas.create_oval(x - 2, y - 2, x + 2, y + 2,
-                           fill=kwargs.get("col", "white"))
+        if draw_points:
+            canvas.create_oval(x - 2, y - 2, x + 2, y + 2, fill=color)
         return x, y, z
 
     def __iter__(self):
@@ -195,10 +195,10 @@ class Line(Shape):
     p1: Point
     p2: Point
 
-    def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
-        p1X, p1Y, _ = self.p1.draw(canvas, projection)
-        p2X, p2Y, _ = self.p2.draw(canvas, projection)
-        canvas.create_line(p1X, p1Y, p2X, p2Y, fill=kwargs.get("col", "white"))
+    def draw(self, canvas: tk.Canvas, projection: Projection, color: str ='white', draw_points: bool = False):
+        p1X, p1Y, _ = self.p1.draw(canvas, projection, color, draw_points)
+        p2X, p2Y, _ = self.p2.draw(canvas, projection, color, draw_points=draw_points)
+        canvas.create_line(p1X, p1Y, p2X, p2Y, fill=color)
 
     def transform(self, matrix: np.ndarray):
         self.p1.transform(matrix)
@@ -218,12 +218,12 @@ class Line(Shape):
 class Polygon(Shape):
     points: list[Point]
 
-    def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
+    def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = False):
         ln = len(self.points)
         lines = [Line(self.points[i], self.points[(i + 1) % ln])
                  for i in range(ln)]
         for line in lines:
-            line.draw(canvas, projection)
+            line.draw(canvas, projection, color, draw_points)
 
     def transform(self, matrix: np.ndarray):
         for point in self.points:
@@ -247,9 +247,9 @@ class Polygon(Shape):
 class Polyhedron(Shape):
     polygons: list[Polygon]
 
-    def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
+    def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = False):
         for poly in self.polygons:
-            poly.draw(canvas, projection)
+            poly.draw(canvas, projection, color, draw_points)
 
     def transform(self, matrix: np.ndarray):
         points = {point for poly in self.polygons for point in poly.points}
@@ -287,11 +287,11 @@ class RotationBody(Shape):
     partitions: int
     _view_poly: Polygon = field(init=False, default=None, repr=False)
 
-    def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
+    def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = False):
         angle = 360 / self.partitions
         self._view_poly = self.polygon.copy()
         for _ in range(self.partitions):
-            self._view_poly.draw(canvas, projection)
+            self._view_poly.draw(canvas, projection, color, draw_points)
             self.rotate(angle)
 
     def rotate(self, phi):
@@ -344,8 +344,8 @@ class FuncPlot(Shape):
         self.ny = ny
         self._polyhedron = self._build_polyhedron()
 
-    def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
-        self._polyhedron.draw(canvas, projection)
+    def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = False):
+        self._polyhedron.draw(canvas, projection, color, draw_points)
 
     def save(self, path: str):
         self._polyhedron.save(path)
@@ -366,22 +366,22 @@ class FuncPlot(Shape):
     def _build_polyhedron(self) -> Polyhedron:
         # TODO: this is a mess
         polygons = []
-        # dx = (self.x1 - self.x0) / self.nx
-        # dy = (self.y1 - self.y0) / self.ny
-        # for i in range(self.nx):
-        #     for j in range(self.ny):
-        #         x0 = self.x0 + i * dx
-        #         y0 = self.y0 + j * dy
-        #         x1 = x0 + dx
-        #         y1 = y0 + dy
-        #         z0 = self.func(x0, y0)
-        #         z1 = self.func(x1, y1)
-        #         polygons.append(Polygon([
-        #             Point(x0, y0, z0),
-        #             Point(x1, y0, z0),
-        #             Point(x1, y1, z1),
-        #             Point(x0, y1, z1)
-        #         ]))
+        dx = (self.x1 - self.x0) / self.nx
+        dy = (self.y1 - self.y0) / self.ny
+        for i in range(self.nx):
+            for j in range(self.ny):
+                x0 = self.x0 + i * dx
+                y0 = self.y0 + j * dy
+                x1 = x0 + dx
+                y1 = y0 + dy
+                z0 = self.func(x0, y0)
+                z1 = self.func(x1, y1)
+                polygons.append(Polygon([
+                    Point(x0, y0, z0),
+                    Point(x1, y0, z0),
+                    Point(x1, y1, z1),
+                    Point(x0, y1, z1)
+                ]))
         return Polyhedron(polygons)
 
 
@@ -643,15 +643,15 @@ class App(tk.Tk):
 
         if self._grid.get():
             for i in range(-self.W, self.W, 50):
-                Line(Point(i, 0, -self.H), Point(i, 0, self.H)).draw(self.canvas, self.projection, col='gray')
+                Line(Point(i, 0, -self.H), Point(i, 0, self.H)).draw(self.canvas, self.projection, color='gray')
             for i in range(-self.H, self.H, 50):
-                Line(Point(-self.W, 0, i), Point(self.W, 0, i)).draw(self.canvas, self.projection, col='gray')
+                Line(Point(-self.W, 0, i), Point(self.W, 0, i)).draw(self.canvas, self.projection, color='gray')
 
         if self._axis.get():
             ln = 100
-            Line(Point(-ln, 0, 0), Point(ln, 0, 0)).draw(self.canvas, self.projection, col='red')  # x axis
-            Line(Point(0, -ln, 0), Point(0, ln, 0)).draw(self.canvas, self.projection, col='green')  # y axis
-            Line(Point(0, 0, -ln), Point(0, 0, ln)).draw(self.canvas, self.projection, col='blue')  # z axis
+            Line(Point(-ln, 0, 0), Point(ln, 0, 0)).draw(self.canvas, self.projection, color='red')  # x axis
+            Line(Point(0, -ln, 0), Point(0, ln, 0)).draw(self.canvas, self.projection, color='green')  # y axis
+            Line(Point(0, 0, -ln), Point(0, 0, ln)).draw(self.canvas, self.projection, color='blue')  # z axis
 
     def rotate(self):
         inp = sd.askstring(
