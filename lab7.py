@@ -224,6 +224,9 @@ class Polygon(Shape):
         for point in self.points:
             point.highlight(canvas, timeout, r)
 
+    def copy(self):
+        return Polygon([Point(p.x, p.y, p.z) for p in self.points])
+
     @property
     def center(self) -> 'Point':
         return Point(sum(point.x for point in self.points) / len(self.points),
@@ -263,11 +266,13 @@ class RotationBody(Shape):
     polygon: Polygon
     axis: str
     partitions: int
+    _view_poly: Polygon = field(init=False, default=None, repr=False)
 
     def draw(self, canvas: tk.Canvas, projection: Projection, **kwargs):
         angle = 360 / self.partitions
+        self._view_poly = self.polygon.copy()
         for _ in range(self.partitions):
-            self.polygon.draw(canvas, projection)
+            self._view_poly.draw(canvas, projection)
             self.rotate(angle)
 
     def rotate(self, phi):
@@ -292,7 +297,7 @@ class RotationBody(Shape):
                     [0, 0, 0, 1]])
             case _:
                 raise ValueError("Invalid axis")
-        self.polygon.transform(mat)
+        self._view_poly.transform(mat)
 
     def transform(self, matrix: np.ndarray):
         self.polygon.transform(matrix)
@@ -702,7 +707,7 @@ class App(tk.Tk):
                 for i in range(0, len(points), 3):
                     poly.append(Point(float(points[i]), float(points[i + 1]), float(points[i + 2])))
                 self.shape = RotationBody(Polygon(poly), axis.strip().upper(), int(patritions))
-                # Coin: 0, 0, 0, 0, 100, 0, 0, 0, 100, X, 120
+                # Coin: 0, 0, 0, 0, 100, 0, 0, 0, 100, Y, 120
 
         self.shape.draw(self.canvas, self.projection)
 
