@@ -295,6 +295,7 @@ class RotationBody(Shape):
             self.rotate(angle)
 
     def rotate(self, phi):
+        # TODO: optimize this mess
         match self.axis:
             case 'X':
                 mat = np.array([
