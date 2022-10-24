@@ -545,7 +545,7 @@ class App(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("ManualCAD 3D")
+        self.title("ManualCAD 4D")
         self.resizable(0, 0)
         self.geometry(f"{self.W}x{self.H}")
         self.shape_type_idx = 0
