@@ -185,6 +185,9 @@ class Point(Shape):
                                        self.y + r, fill="red", outline="red")
         canvas.after(timeout, canvas.delete, highlight)
 
+    def copy(self):
+        return Point(self.x, self.y, self.z)
+
     @property
     def center(self) -> 'Point':
         return Point(self.x, self.y, self.z)
@@ -195,7 +198,7 @@ class Line(Shape):
     p1: Point
     p2: Point
 
-    def draw(self, canvas: tk.Canvas, projection: Projection, color: str ='white', draw_points: bool = False):
+    def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = False):
         p1X, p1Y, _ = self.p1.draw(canvas, projection, color, draw_points)
         p2X, p2Y, _ = self.p2.draw(canvas, projection, color, draw_points=draw_points)
         canvas.create_line(p1X, p1Y, p2X, p2Y, fill=color)
@@ -234,7 +237,7 @@ class Polygon(Shape):
             point.highlight(canvas, timeout, r)
 
     def copy(self):
-        return Polygon([Point(p.x, p.y, p.z) for p in self.points])
+        return Polygon([p.copy() for p in self.points])
 
     @property
     def center(self) -> 'Point':
@@ -285,17 +288,38 @@ class RotationBody(Shape):
     polygon: Polygon
     axis: str
     partitions: int
-    _view_poly: Polygon = field(init=False, default=None, repr=False)
+    mesh: Polyhedron = field(init=False, default=None)
 
     def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = False):
-        angle = 360 / self.partitions
-        self._view_poly = self.polygon.copy()
+        if self.mesh:
+            self.mesh.draw(canvas, projection, color, draw_points)
+            return
+        angle = radians(360 / self.partitions)
+        poly = self.polygon.copy()
+        surface = []
+        # Cheese:
+        # 0, 0, 0, 0, 100, 0, 100, 100, 0, 100, 0, 0, Y, 10
         for _ in range(self.partitions):
-            self._view_poly.draw(canvas, projection, color, draw_points)
-            self.rotate(angle)
+            surface.append(poly.copy())
+            self.rotate(poly, angle)
 
-    def rotate(self, phi):
-        # TODO: optimize this mess
+        mesh = []
+        # pylint: disable=consider-using-enumerate
+        for i in range(self.partitions):
+            poly1: Polygon= surface[i]
+            poly2: Polygon = surface[(i + 1) % self.partitions]
+            for j in range(len(poly1.points)):
+                mesh.append(Polygon([poly1.points[j], poly1.points[(j + 1) % len(poly1.points)],
+                                     poly2.points[(j + 1) % len(poly2.points)], poly2.points[j]]))
+        self.mesh = Polyhedron(mesh)
+        self.mesh.fix_points()
+        self.mesh.draw(canvas, projection, color, draw_points)
+        # import random
+        # for line in mesh:
+        #     line.draw(canvas, projection, color ="#"+("%06x"%random.randint(0,16777215)), draw_points=False)
+        #     # for j in range(len(poly.points)):
+
+    def rotate(self, poly: Polygon, phi: float):
         match self.axis:
             case 'X':
                 mat = np.array([
@@ -317,14 +341,17 @@ class RotationBody(Shape):
                     [0, 0, 0, 1]])
             case _:
                 raise ValueError("Invalid axis")
-        self._view_poly.transform(mat)
+        poly.transform(mat)
 
     def transform(self, matrix: np.ndarray):
-        self.polygon.transform(matrix)
+        self.mesh.transform(matrix)
 
     @property
     def center(self) -> 'Point':
         return self.polygon.center
+
+    def save(self, path: str):
+        self.mesh.save(path)
 
 
 @dataclass
@@ -368,7 +395,6 @@ class FuncPlot(Shape):
                     poly.points[i] = points[k]
 
     def _build_polyhedron(self) -> Polyhedron:
-        # TODO: this is a mess
         polygons = []
         dx = (self.x1 - self.x0) / self.nx
         dy = (self.y1 - self.y0) / self.ny
