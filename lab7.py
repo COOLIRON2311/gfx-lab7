@@ -404,13 +404,13 @@ class FuncPlot(Shape):
                 y0 = self.y0 + j * dy
                 x1 = x0 + dx
                 y1 = y0 + dy
-                z0 = self.func(x0, y0)
-                z1 = self.func(x1, y1)
+                #z0 = self.func(x0, y0)
+                #z1 = self.func(x1, y1)
                 polygons.append(Polygon([
-                    Point(x0, y0, z0),
-                    Point(x1, y0, z0),
-                    Point(x1, y1, z1),
-                    Point(x0, y1, z1)
+                    Point(x0, y0, self.func(x0, y0)),
+                    Point(x1, y0, self.func(x1, y0)),
+                    Point(x1, y1, self.func(x1, y1)),
+                    Point(x0, y1, self.func(x0, y1))
                 ]))
         return Polyhedron(polygons)
 
@@ -582,11 +582,11 @@ class App(tk.Tk):
         self.title("ManualCAD 4D")
         self.resizable(0, 0)
         self.geometry(f"{self.W}x{self.H}")
-        self.shape_type_idx = 0
+        self.shape_type_idx = 6
         self.shape_type = ShapeType(self.shape_type_idx)
         self.func_idx = 0
         self.func = Function(self.func_idx)
-        self.projection_idx = 0
+        self.projection_idx = 1
         self.projection = Projection(self.projection_idx)
         self.create_widgets()
 
@@ -692,7 +692,7 @@ class App(tk.Tk):
             "Поворот", "Введите угол поворота в градусах по x, y, z:")
         if inp is None:
             return
-        phi, theta, psi = map(radians, map(float, inp.split(', ')))
+        phi, theta, psi = map(radians, map(float, inp.split(',')))
         m, n, k = self.shape.center
 
         mat_back = np.array([
