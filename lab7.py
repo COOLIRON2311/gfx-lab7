@@ -288,17 +288,19 @@ class RotationBody(Shape):
     polygon: Polygon
     axis: str
     partitions: int
-    mesh: Polyhedron = field(init=False, default=None)
+    _mesh: Polyhedron = field(init=False, default=None)
 
     def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = False):
-        if self.mesh:
-            self.mesh.draw(canvas, projection, color, draw_points)
+        if self._mesh:
+            self._mesh.draw(canvas, projection, color, draw_points)
             return
         angle = radians(360 / self.partitions)
         poly = self.polygon.copy()
         surface = []
         # Cheese:
         # 0, 0, 0, 0, 100, 0, 100, 100, 0, 100, 0, 0, Y, 10
+        # Vase:
+        # 0,0,0, 100,0,0, 100,50,0, 50,50,0, 150,250,0, 100,250,0, 100,300,0, 150,300,0, 150,350,0, 0,350,0, Y, 10
         for _ in range(self.partitions):
             surface.append(poly.copy())
             self.rotate(poly, angle)
@@ -306,14 +308,14 @@ class RotationBody(Shape):
         mesh = []
         # pylint: disable=consider-using-enumerate
         for i in range(self.partitions):
-            poly1: Polygon= surface[i]
+            poly1: Polygon = surface[i]
             poly2: Polygon = surface[(i + 1) % self.partitions]
             for j in range(len(poly1.points)):
                 mesh.append(Polygon([poly1.points[j], poly1.points[(j + 1) % len(poly1.points)],
                                      poly2.points[(j + 1) % len(poly2.points)], poly2.points[j]]))
-        self.mesh = Polyhedron(mesh)
-        self.mesh.fix_points()
-        self.mesh.draw(canvas, projection, color, draw_points)
+        self._mesh = Polyhedron(mesh)
+        self._mesh.fix_points()
+        self._mesh.draw(canvas, projection, color, draw_points)
         # import random
         # for line in mesh:
         #     line.draw(canvas, projection, color ="#"+("%06x"%random.randint(0,16777215)), draw_points=False)
@@ -344,14 +346,14 @@ class RotationBody(Shape):
         poly.transform(mat)
 
     def transform(self, matrix: np.ndarray):
-        self.mesh.transform(matrix)
+        self._mesh.transform(matrix)
 
     @property
     def center(self) -> 'Point':
         return self.polygon.center
 
     def save(self, path: str):
-        self.mesh.save(path)
+        self._mesh.save(path)
 
 
 @dataclass
