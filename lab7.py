@@ -583,11 +583,11 @@ class App(tk.Tk):
         self.title("ManualCAD 4D")
         self.resizable(0, 0)
         self.geometry(f"{self.W}x{self.H}")
-        self.shape_type_idx = 6
+        self.shape_type_idx = 0
         self.shape_type = ShapeType(self.shape_type_idx)
         self.func_idx = 0
         self.func = Function(self.func_idx)
-        self.projection_idx = 1
+        self.projection_idx = 0
         self.projection = Projection(self.projection_idx)
         self.create_widgets()
 
