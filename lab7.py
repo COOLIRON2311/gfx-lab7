@@ -374,6 +374,7 @@ class FuncPlot(Shape):
         self.nx = nx
         self.ny = ny
         self._polyhedron = self._build_polyhedron()
+        self.fix_points()
 
     def draw(self, canvas: tk.Canvas, projection: Projection, color: str = 'white', draw_points: bool = False):
         self._polyhedron.draw(canvas, projection, color, draw_points)
